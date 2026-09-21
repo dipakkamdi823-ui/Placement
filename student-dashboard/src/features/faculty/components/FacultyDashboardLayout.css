@@ -1,0 +1,87 @@
+.faculty-shell {
+  min-height: 100vh;
+  background-color: transparent; /* allow atmospheric body background to show through */
+}
+
+.faculty-sidebar {
+  width: 240px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--text-main);
+  border-right: 1px solid var(--border-color);
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.faculty-sidebar--collapsed {
+  width: 72px;
+}
+
+.faculty-sidebar--collapsed .faculty-nav-link span:last-child,
+.faculty-sidebar--collapsed .faculty-sidebar__brand span {
+  display: none;
+}
+
+.faculty-sidebar__brand {
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-family: var(--font-heading);
+}
+
+.faculty-nav-link {
+  color: var(--text-muted) !important;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  font-family: var(--font-main);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+  outline: none;
+  border: 1px solid transparent;
+}
+
+.faculty-nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-main) !important;
+  transform: translateX(2px);
+}
+
+[data-theme="light"] .faculty-nav-link:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.faculty-nav-link--active {
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #818cf8 !important;
+  border: 1px solid rgba(99, 102, 241, 0.35) !important;
+  border-radius: 10px !important;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.12);
+  transform: none !important;
+}
+
+[data-theme="light"] .faculty-nav-link--active {
+  background: rgba(79, 70, 229, 0.1) !important;
+  color: #4f46e5 !important;
+  border: 1px solid rgba(79, 70, 229, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+}
+
+.faculty-topbar {
+  background: var(--bg-card);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.faculty-content {
+  overflow-y: auto;
+  background-color: transparent;
+}

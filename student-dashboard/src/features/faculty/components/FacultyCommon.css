@@ -1,0 +1,398 @@
+/*
+ * SAIOTAF - Faculty & Moderator Module
+ * Common Stylesheet for Dashboard Views (Tables, Badges, Modals, Forms)
+ */
+
+/* Unified Card styling */
+.faculty-card {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.12) !important;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
+}
+
+[data-theme="light"] .faculty-card {
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Modern Pill Badges - Vibrant & Clear */
+.badge-pill-custom {
+  font-weight: 700 !important;
+  font-size: 0.75rem;
+  padding: 0.4em 0.85em;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-pending {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+[data-theme="light"] .badge-pending {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a !important;
+}
+
+.badge-approved, .badge-verified {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+}
+[data-theme="light"] .badge-approved, [data-theme="light"] .badge-verified {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+  border: 1px solid #bbf7d0 !important;
+}
+
+.badge-rejected {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+  color: #f43f5e !important;
+  border: 1px solid rgba(244, 63, 94, 0.35) !important;
+}
+[data-theme="light"] .badge-rejected {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+.badge-flagged, .badge-suspended {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+  color: #f97316 !important;
+  border: 1px solid rgba(249, 115, 22, 0.35) !important;
+}
+[data-theme="light"] .badge-flagged, [data-theme="light"] .badge-suspended {
+  background-color: #ffedd5 !important;
+  color: #c2410c !important;
+  border: 1px solid #fed7aa !important;
+}
+
+.badge-closed, .badge-expired {
+  background-color: rgba(148, 163, 184, 0.15) !important;
+  color: var(--text-dim) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Table Enhancements */
+.faculty-table-container {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15) !important;
+}
+
+.faculty-table-container::-webkit-scrollbar {
+  height: 6px;
+}
+.faculty-table-container::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+.faculty-table-container::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 3px;
+}
+
+[data-theme="light"] .faculty-table-container {
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06) !important;
+}
+
+.faculty-table {
+  margin-bottom: 0;
+  width: 100% !important;
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+}
+
+.faculty-table th {
+  font-weight: 700 !important;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted) !important;
+  background-color: var(--bg-card-subtle) !important;
+  padding: 0.75rem 0.6rem;
+  border-bottom: 2px solid var(--border-color) !important;
+}
+
+.faculty-table td {
+  padding: 0.75rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-main) !important;
+  background-color: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  white-space: nowrap;
+}
+
+.faculty-table tr:hover td {
+  background-color: var(--bg-card-hover) !important;
+}
+
+.faculty-table .text-dark {
+  color: var(--text-main) !important;
+}
+
+.faculty-table .text-muted {
+  color: var(--text-muted) !important;
+}
+
+.faculty-table tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Action Buttons */
+.btn-action-custom {
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  padding: 0.35rem 0.65rem !important;
+  border-radius: 6px !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s !important;
+}
+
+.btn-action-custom.btn-outline-success {
+  color: #10b981 !important;
+  border-color: #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+.btn-action-custom.btn-outline-success:hover:not(:disabled) {
+  color: #ffffff !important;
+  background-color: #10b981 !important;
+}
+
+.btn-action-custom.btn-outline-danger {
+  color: #f43f5e !important;
+  border-color: #f43f5e !important;
+  background-color: rgba(244, 63, 94, 0.1) !important;
+}
+.btn-action-custom.btn-outline-danger:hover:not(:disabled) {
+  color: #ffffff !important;
+  background-color: #f43f5e !important;
+}
+
+.btn-action-custom.btn-outline-secondary,
+.btn-action-custom.btn-outline-dark {
+  color: var(--text-muted) !important;
+  border-color: var(--border-color) !important;
+  background-color: var(--bg-card-subtle) !important;
+}
+.btn-action-custom.btn-outline-secondary:hover:not(:disabled),
+.btn-action-custom.btn-outline-dark:hover:not(:disabled) {
+  color: var(--text-main) !important;
+  background-color: var(--bg-card-hover) !important;
+}
+
+/* Modern Form Controls */
+.faculty-search-input {
+  background-color: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.faculty-search-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+  outline: none;
+}
+
+.faculty-search-input::placeholder {
+  color: var(--text-dim, #94a3b8) !important;
+  opacity: 0.75 !important;
+}
+
+.faculty-select-filter {
+  background-color: var(--input-bg) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  padding: 0.55rem 1.75rem 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.faculty-select-filter:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+  outline: none;
+}
+
+.faculty-modal-content {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="light"] .faculty-modal-content {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 30px -5px rgba(15, 23, 42, 0.1), 0 10px 15px -3px rgba(15, 23, 42, 0.05) !important;
+}
+
+.faculty-modal-panel {
+  background-color: var(--bg-card-subtle, rgba(15, 23, 42, 0.6)) !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--text-main) !important;
+  border-radius: 12px;
+}
+
+[data-theme="light"] .faculty-modal-panel {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.faculty-modal-stat-box {
+  background-color: var(--bg-card-hover, rgba(28, 40, 65, 0.95)) !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
+  border-radius: 8px;
+}
+
+[data-theme="light"] .faculty-modal-stat-box {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.modal-label {
+  color: var(--text-dim, #94a3b8) !important;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+[data-theme="light"] .modal-label {
+  color: #475569 !important;
+}
+
+.modal-value {
+  color: var(--text-main, #f8fafc) !important;
+  font-weight: 700;
+}
+
+[data-theme="light"] .modal-value {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .modal-header,
+[data-theme="light"] .modal-footer {
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .btn-close {
+  filter: none !important;
+}
+
+[data-theme="dark"] .btn-close,
+.faculty-modal-content .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="light"] .faculty-modal-content .btn-close {
+  filter: none !important;
+}
+
+/* Modal Backdrop & Overlay Mode Support */
+.faculty-modal-backdrop {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(4px);
+}
+
+[data-theme="light"] .faculty-modal-backdrop {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+}
+
+/* Form Select Option Theme Alignment */
+.faculty-select-filter option,
+.faculty-search-input option {
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+}
+
+/* Active Table Row Theme Support */
+.faculty-table tr.table-active td {
+  background-color: var(--bg-card-hover) !important;
+  color: var(--text-main) !important;
+}
+
+/* Sub/Nested Tables inside Modals and Panels */
+.faculty-nested-table {
+  --bs-table-bg: transparent !important;
+  --bs-table-color: var(--text-main) !important;
+  background-color: transparent !important;
+  color: var(--text-main) !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.faculty-nested-table thead th {
+  background-color: var(--bg-card-subtle) !important;
+  color: var(--text-muted) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.6rem 0.5rem;
+}
+
+[data-theme="light"] .faculty-nested-table thead th {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.faculty-nested-table tbody td {
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 0.55rem 0.5rem;
+}
+
+[data-theme="light"] .faculty-nested-table tbody td {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #f1f5f9 !important;
+}
+
+.faculty-nested-table tbody tr:hover td {
+  background-color: var(--bg-card-hover) !important;
+}
+
+[data-theme="light"] .faculty-nested-table tbody tr:hover td {
+  background-color: #f8fafc !important;
+}
+
+/* Reset any unstyled Bootstrap .table elements inside modals to adhere to theme */
+.faculty-modal-content .table {
+  --bs-table-bg: transparent !important;
+  --bs-table-color: var(--text-main) !important;
+  color: var(--text-main) !important;
+}
+
+.faculty-modal-content .table td,
+.faculty-modal-content .table th {
+  color: inherit;
+}
+
