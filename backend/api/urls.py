@@ -5,8 +5,8 @@ from api import admin_views
 
 urlpatterns = [
     # Admin Auth & Dynamic Controllers
-    path('admin/auth/login/', admin_views.AdminLoginView.as_view(), name='admin-auth-login'),
-    path('admin/auth/login', admin_views.AdminLoginView.as_view(), name='admin-auth-login-noslash'),
+    path('admin/auth/login/', admin_auth_views.admin_login, name='admin-auth-login'),
+    path('admin/auth/login', admin_auth_views.admin_login, name='admin-auth-login-noslash'),
     path('admin/auth/register/', admin_auth_views.admin_register),
     path('admin/auth/reset-password/', admin_auth_views.admin_reset_password),
     path('admin/stats/', admin_views.AdminStatsView.as_view(), name='admin-stats'),

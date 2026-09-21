@@ -13,7 +13,7 @@ const adminClient = axios.create({
 });
 
 adminClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("saiotaf_admin_token") || localStorage.getItem("saiotaf_access_token");
+  const token = localStorage.getItem("saiotaf_admin_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

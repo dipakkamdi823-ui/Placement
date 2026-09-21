@@ -15,6 +15,13 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const fillDefaultAdminCredentials = () => {
+    setEmail("admin@saiotaf.edu");
+    setPassword("password123");
+    setSecretKey("SAI88202");
+    setError("");
+  };
+
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -30,6 +37,12 @@ export default function AdminLoginPage() {
 
     if (trimmedSecretKey.length !== 8) {
       setError("Unauthorized: Secret Access Key must be exactly 8 characters.");
+      return;
+    }
+
+    // Client-side guard against student credentials in admin portal
+    if (trimmedEmail.endsWith("@raisoni.net")) {
+      setError("Access Denied: Student accounts (@raisoni.net) cannot access the Super Admin Portal. Use the default Super Admin credentials.");
       return;
     }
 
@@ -69,7 +82,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="d-flex align-items-center justify-content-center vh-100" style={{ background: "var(--bg-dark)", color: "var(--text-main)" }}>
-      <div className="glass-panel p-4 shadow-lg" style={{ maxWidth: 440, width: "100%", borderRadius: "16px", background: "var(--bg-card)", border: "1px solid var(--border-color)" }}>
+      <div className="glass-panel p-4 shadow-lg" style={{ maxWidth: 460, width: "100%", borderRadius: "16px", background: "var(--bg-card)", border: "1px solid var(--border-color)" }}>
         <div className="text-center mb-4">
           <div
             className="p-3 rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
@@ -85,6 +98,34 @@ export default function AdminLoginPage() {
           </div>
           <h3 className="fw-bold mb-1" style={{ color: "var(--text-main)" }}>Super Admin Portal</h3>
           <p className="small mb-0" style={{ color: "var(--text-muted)" }}>SAIOTAF Framework • Tier 3 Administrative Oversight</p>
+        </div>
+
+        {/* Demo Admin Pre-configured Badge */}
+        <div 
+          className="p-3 mb-3 rounded-3 text-start d-flex align-items-center justify-content-between"
+          style={{ 
+            background: "rgba(244, 63, 94, 0.08)", 
+            border: "1px dashed rgba(244, 63, 94, 0.35)",
+            fontSize: "0.82rem"
+          }}
+        >
+          <div>
+            <div className="fw-bold" style={{ color: "#fb7185" }}>Pre-configured Admin (No Sign-Up)</div>
+            <div className="text-muted" style={{ fontSize: "0.72rem" }}>
+              <span className="text-light">admin@saiotaf.edu</span> • Key: <span className="text-warning">SAI88202</span>
+            </div>
+            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
+              * Student accounts cannot access the admin portal
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={fillDefaultAdminCredentials}
+            className="btn btn-sm btn-outline-danger px-2.5 py-1 fw-bold ms-2"
+            style={{ fontSize: "0.75rem", borderRadius: "8px", whiteSpace: "nowrap" }}
+          >
+            Quick Fill
+          </button>
         </div>
 
         {error && (

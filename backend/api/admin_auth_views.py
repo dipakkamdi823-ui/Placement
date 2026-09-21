@@ -69,13 +69,41 @@ def admin_login(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
+    # Check student domain immediately
+    if email.endswith('@raisoni.net'):
+        return Response(
+            {"error": "Access Denied: This account is registered as a Student. Student accounts are not permitted to access the Super Admin console."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # Try Django user auth
     try:
         user = User.objects.get(email__iexact=email)
     except User.DoesNotExist:
         return Response(
-            {"error": "No admin account found with this email."},
+            {"error": "No admin account found with this email. Please sign up or use pre-configured Super Admin credentials (admin@saiotaf.edu)."},
             status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # Enforce admin privilege check: student accounts cannot log into the admin portal
+    is_admin = bool(user.is_staff or user.is_superuser)
+    if not is_admin:
+        try:
+            from api.db_helper import get_db
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("SELECT role FROM users WHERE LOWER(email) = LOWER(?)", (email,))
+            u_row = cursor.fetchone()
+            conn.close()
+            if u_row and str(u_row.get("role", "")).lower() in ["admin", "superadmin", "super_admin"]:
+                is_admin = True
+        except Exception:
+            pass
+
+    if not is_admin:
+        return Response(
+            {"error": "Access Denied: This account is registered as a Student. Student accounts are not permitted to access the Super Admin console."},
+            status=status.HTTP_403_FORBIDDEN
         )
 
     if not user.check_password(password):
@@ -89,10 +117,17 @@ def admin_login(request):
 
     return Response({
         "status": "success",
+        "message": "Super Admin Authentication Successful.",
         "token": token,
+        "role": "SUPER_ADMIN",
         "full_name": full_name,
         "email": email,
-        "role": "SUPER_ADMIN"
+        "user": {
+            "id": user.id,
+            "email": email,
+            "first_name": user.first_name or "Super",
+            "last_name": user.last_name or "Administrator"
+        }
     }, status=status.HTTP_200_OK)
 
 

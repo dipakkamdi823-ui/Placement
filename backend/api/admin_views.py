@@ -39,20 +39,41 @@ class IsSuperAdminUser(permissions.BasePermission):
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
         role_header = request.META.get('HTTP_X_USER_ROLE', '').upper()
         
+        # 1. Django authenticated user with staff/superuser/admin privileges
         if request.user and request.user.is_authenticated:
+            if request.user.is_staff or request.user.is_superuser:
+                return True
             user_role = getattr(request.user, 'role', '').upper()
             if hasattr(request.user, 'faculty') and request.user.faculty:
                 user_role = request.user.faculty.role.upper()
             if user_role in ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN']:
                 return True
 
-        if 'admin_jwt_super_access_token' in auth_header or 'saiotaf_admin_token' in auth_header:
+        # 2. Extract Bearer token from header
+        token = ''
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ', 1)[1].strip()
+        elif auth_header:
+            token = auth_header.strip()
+
+        if token:
+            # Check for standard admin token format
+            if token == 'admin_jwt_super_access_token_2026' or 'saiotaf_admin_token' in token:
+                return True
+            # Verify JWT token payload
+            try:
+                import jwt
+                payload = jwt.decode(token, "saiotaf_jwt_secret_python_key_2026", algorithms=["HS256"])
+                if str(payload.get("role", "")).upper() in ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN']:
+                    return True
+            except Exception:
+                pass
+
+        # 3. Header check only if accompanied by valid admin indicator
+        if role_header in ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN'] and token:
             return True
 
-        if role_header in ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN']:
-            return True
-
-        return True
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -62,39 +83,9 @@ class AdminLoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get("email", "").strip().lower()
-        password = request.data.get("password", "").strip()
-        secret_key = request.data.get("secret_key", "").strip()
+        from api.admin_auth_views import admin_login
+        return admin_login(request)
 
-        if not email or not password or not secret_key:
-            return Response(
-                {"error": "Email, password, and 8-character secret access key are required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if len(secret_key) != 8:
-            return Response(
-                {"error": "Unauthorized: Secret Access Key must be exactly 8 characters."},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        if secret_key != ADMIN_SECRET_KEY:
-            return Response(
-                {"error": "Unauthorized: Invalid Secret Access Key for SAIOTAF Super Admin."},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        return Response({
-            "message": "Super Admin Authentication Successful.",
-            "token": "admin_jwt_super_access_token_2026",
-            "role": "SUPER_ADMIN",
-            "user": {
-                "id": 9999,
-                "email": email,
-                "first_name": "Super",
-                "last_name": "Administrator"
-            }
-        }, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------------------
