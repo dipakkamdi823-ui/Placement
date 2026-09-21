@@ -75,9 +75,13 @@ export default function AdminLogin() {
       }
 
       // Successful Super Admin Authentication
+      const resolvedEmail = data.email || data.user?.email || trimmedEmail;
       localStorage.setItem("saiotaf_admin_token", data.token || "admin_jwt_super_access_token_2026");
       localStorage.setItem("saiotaf_user_role", "SUPER_ADMIN");
-      localStorage.setItem("saiotaf_admin_email", trimmedEmail);
+      localStorage.setItem("saiotaf_admin_email", resolvedEmail);
+      if (data.user) {
+        localStorage.setItem("saiotaf_admin_user", JSON.stringify(data.user));
+      }
 
       navigate("/admin/overview");
     } catch (err) {

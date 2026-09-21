@@ -112,6 +112,34 @@ export default function AnalyticsDashboard() {
     load();
   }, []);
 
+  const renderCustomPieLabel = ({ cx, cy, midAngle, outerRadius, percent, index }) => {
+    const entry = pieData[index] || {};
+    if (entry.isDummy || !percent || percent < 0.04) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 14;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const color = entry.fill || (isDark ? "#e2e8f0" : "#1e293b");
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill={color}
+        textAnchor={x > cx + 5 ? "start" : x < cx - 5 ? "end" : "middle"}
+        dominantBaseline="central"
+        style={{
+          fontSize: "12px",
+          fontWeight: 700,
+          fontFamily: "inherit",
+          filter: isDark ? "drop-shadow(0px 1px 2px rgba(0,0,0,0.5))" : "none"
+        }}
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
   if (loading) return <div className="text-muted py-4">Loading analytics from project database…</div>;
   if (error) return <div className="alert alert-danger">{error}</div>;
 
@@ -189,8 +217,8 @@ export default function AnalyticsDashboard() {
               </div>
 
               {funnelView === "pie" ? (
-                <ResponsiveContainer width="100%" height={290}>
-                  <PieChart>
+                <ResponsiveContainer width="100%" height={305}>
+                  <PieChart margin={{ top: 20, right: 20, bottom: 6, left: 20 }}>
                     <Tooltip
                       contentStyle={{
                         backgroundColor: isDark ? "#121a2b" : "#ffffff",
@@ -219,16 +247,14 @@ export default function AnalyticsDashboard() {
                     <Pie
                       data={pieData}
                       cx="50%"
-                      cy="45%"
-                      innerRadius={55}
-                      outerRadius={92}
+                      cy="46%"
+                      innerRadius={48}
+                      outerRadius={78}
                       paddingAngle={pieData.length > 1 ? 3 : 0}
                       dataKey="value"
                       nameKey="name"
                       isAnimationActive
-                      label={({ name, percent, isDummy }) =>
-                        isDummy || percent < 0.05 ? "" : `${(percent * 100).toFixed(0)}%`
-                      }
+                      label={renderCustomPieLabel}
                       labelLine={false}
                     >
                       {pieData.map((entry, index) => (

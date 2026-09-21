@@ -189,6 +189,9 @@ class SentenceBertRecommendationEngine(AbstractNLPRecommendationEngine):
         }
 
     def generate_recommendations(self, user_skills: list) -> list:
+        if not user_skills:
+            return []
+
         opps = []
         try:
             from faculty_app.models import Opportunity

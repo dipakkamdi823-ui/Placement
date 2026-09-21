@@ -32,9 +32,50 @@ export default function AdminDashboardLayout() {
     window.dispatchEvent(new CustomEvent("themeChange", { detail: nextTheme }));
   };
 
+  const resolveAdminEmail = () => {
+    // 1. Direct stored email from login
+    const storedEmail = localStorage.getItem("saiotaf_admin_email") || localStorage.getItem("admin_email");
+    if (storedEmail && storedEmail.trim()) {
+      return storedEmail.trim();
+    }
+
+    // 2. Stored admin user object
+    try {
+      const userStr = localStorage.getItem("saiotaf_admin_user") || localStorage.getItem("admin_user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        if (u.email && u.email.trim()) return u.email.trim();
+      }
+    } catch (_) {}
+
+    // 3. Decode from JWT token payload if available
+    const token = localStorage.getItem("saiotaf_admin_token");
+    if (token && typeof token === "string" && token.includes(".")) {
+      try {
+        const parts = token.split(".");
+        if (parts.length >= 2) {
+          const payload = JSON.parse(atob(parts[1]));
+          if (payload.email) return payload.email;
+          if (payload.sub && payload.sub.includes("@")) return payload.sub;
+        }
+      } catch (_) {}
+    }
+
+    return "admin@saiotaf.edu";
+  };
+
+  const [adminEmail, setAdminEmail] = useState(resolveAdminEmail);
+
+  useEffect(() => {
+    setAdminEmail(resolveAdminEmail());
+  }, []);
+
   const handleAdminLogout = () => {
     localStorage.removeItem("saiotaf_admin_token");
     localStorage.removeItem("saiotaf_user_role");
+    localStorage.removeItem("saiotaf_admin_email");
+    localStorage.removeItem("saiotaf_admin_user");
+    localStorage.removeItem("saiotaf_admin_name");
     navigate("/admin/login");
   };
 
@@ -162,7 +203,7 @@ export default function AdminDashboardLayout() {
               <div className="mt-4 pt-3 border-top px-2" style={{ borderColor: "var(--border-color)" }}>
                 <span className="small d-block mb-1" style={{ color: "var(--text-muted)" }}>Active Account:</span>
                 <span className="small fw-bold d-block" style={{ color: "var(--text-main)" }}>Super Admin Console</span>
-                <span className="text-info small fw-medium">admin@raisoni.net</span>
+                <span className="text-info small fw-medium text-break">{adminEmail}</span>
               </div>
             </div>
           </div>

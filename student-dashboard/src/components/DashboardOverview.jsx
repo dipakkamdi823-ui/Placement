@@ -14,7 +14,8 @@ import {
   BrainCircuit,
   Target,
   User,
-  Building
+  Building,
+  Upload
 } from 'lucide-react';
 
 export default function DashboardOverview({ profile, resume, readiness, applications, recommendations, setActiveTab }) {
@@ -23,6 +24,7 @@ export default function DashboardOverview({ profile, resume, readiness, applicat
     const s = (a.status || '').toLowerCase();
     return s === 'shortlisted' || s === 'interview' || s === 'selected' || s === 'offered';
   });
+  const hasResume = Boolean(resume && (resume.filename || resume.resume_id || resume.file_url));
   const topMatch = recommendations[0];
 
   return (
@@ -47,13 +49,23 @@ export default function DashboardOverview({ profile, resume, readiness, applicat
             Welcome back, <span className="gradient-text">{profile.name}</span>!
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: '1.5' }}>
-            Your student profile is active. Sentence-BERT has scored your resume against <strong>{recommendations.length} curated opportunities</strong> with a top compatibility match of <strong>{topMatch ? topMatch.match_score : 92}%</strong>.
+            {hasResume && recommendations.length > 0 ? (
+              <>Your student profile is active. Sentence-BERT has scored your resume against <strong>{recommendations.length} curated opportunities</strong> with a top compatibility match of <strong>{topMatch ? topMatch.match_score : 92}%</strong>.</>
+            ) : (
+              <>Upload your resume to activate our <strong>Semantic AI matching engine</strong> and get personalized opportunity recommendations based on your verified skills.</>
+            )}
           </p>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-            <button className="btn btn-primary" onClick={() => setActiveTab('recommendations')}>
-              <Sparkles size={16} /> View AI Matches ({recommendations.length})
-            </button>
+            {hasResume && recommendations.length > 0 ? (
+              <button className="btn btn-primary" onClick={() => setActiveTab('recommendations')}>
+                <Sparkles size={16} /> View AI Matches ({recommendations.length})
+              </button>
+            ) : (
+              <button className="btn btn-primary" onClick={() => setActiveTab('resume')}>
+                <Upload size={16} /> Upload Resume to Unlock Matches
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={() => setActiveTab('opportunities')}>
               <Briefcase size={16} /> Browse All Listings
             </button>
@@ -157,18 +169,26 @@ export default function DashboardOverview({ profile, resume, readiness, applicat
         </div>
 
         {/* AI Recommendations Highlight */}
-        <div className="glass-panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setActiveTab('recommendations')}>
+        <div 
+          className="glass-panel" 
+          style={{ padding: '20px', cursor: 'pointer' }} 
+          onClick={() => setActiveTab(hasResume ? 'recommendations' : 'resume')}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>AI Match Matches</span>
-              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#c084fc', marginTop: '4px' }}>{recommendations.length}</h3>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>AI Job Matches</span>
+              <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#c084fc', marginTop: '4px' }}>
+                {hasResume ? recommendations.length : 0}
+              </h3>
             </div>
             <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
               <Sparkles size={20} />
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '14px', fontSize: '0.78rem', color: '#a855f7', fontWeight: 600 }}>
-            Top: {topMatch ? topMatch.title : 'Data Analyst'} ({topMatch ? topMatch.match_score : 92}%)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '14px', fontSize: '0.78rem', color: hasResume ? '#a855f7' : 'var(--text-dim)', fontWeight: 600 }}>
+            {hasResume && topMatch 
+              ? `Top: ${topMatch.title} (${topMatch.match_score}%)` 
+              : 'Upload resume to calculate'}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
             CareerBERT + JobFormer AI Engine
@@ -191,53 +211,80 @@ export default function DashboardOverview({ profile, resume, readiness, applicat
               <Sparkles size={18} color="#818cf8" /> Top Recommended Opportunities
             </h3>
             <button 
-              onClick={() => setActiveTab('recommendations')} 
+              onClick={() => setActiveTab(hasResume ? 'recommendations' : 'resume')} 
               style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
             >
-              See All <ChevronRight size={14} />
+              {hasResume ? <>See All <ChevronRight size={14} /></> : 'Upload Resume'}
             </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {recommendations.slice(0, 2).map(opp => (
-              <div key={opp.id} style={{
-                padding: '16px',
+            {hasResume && recommendations.length > 0 ? (
+              recommendations.slice(0, 2).map(opp => (
+                <div key={opp.id} style={{
+                  padding: '16px',
+                  borderRadius: '12px',
+                  background: 'var(--bg-card-subtle)',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span className="badge badge-primary">{opp.match_score}% Match</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{opp.domain}</span>
+                    </div>
+                    <div style={{ margin: '3px 0' }}>
+                      <div style={{ fontSize: '0.98rem', color: 'var(--text-main)', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 700, marginRight: '6px' }}>Role:</span>
+                        {opp.title}
+                      </div>
+                      <div style={{ fontSize: '0.84rem', color: 'var(--primary-light)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 700, marginRight: '4px' }}>Org:</span>
+                        <Building size={13} color="var(--accent-cyan)" /> {opp.organization} • <span style={{ color: 'var(--text-muted)' }}>{opp.stipend}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: '#34d399', marginTop: '4px', fontStyle: 'italic' }}>
+                      "{opp.explanation}"
+                    </div>
+                  </div>
+
+                  <button 
+                    className="btn btn-outline-cyan" 
+                    style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                    onClick={() => setActiveTab('opportunities')}
+                  >
+                    View Details
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div style={{
+                padding: '28px 20px',
                 borderRadius: '12px',
                 background: 'var(--bg-card-subtle)',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                border: '1px dashed var(--border-color)',
+                textAlign: 'center'
               }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span className="badge badge-primary">{opp.match_score}% Match</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{opp.domain}</span>
-                  </div>
-                  <div style={{ margin: '3px 0' }}>
-                    <div style={{ fontSize: '0.98rem', color: 'var(--text-main)', fontWeight: 700 }}>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 700, marginRight: '6px' }}>Role:</span>
-                      {opp.title}
-                    </div>
-                    <div style={{ fontSize: '0.84rem', color: 'var(--primary-light)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 700, marginRight: '4px' }}>Org:</span>
-                      <Building size={13} color="var(--accent-cyan)" /> {opp.organization} • <span style={{ color: 'var(--text-muted)' }}>{opp.stipend}</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '0.74rem', color: '#34d399', marginTop: '4px', fontStyle: 'italic' }}>
-                    "{opp.explanation}"
-                  </div>
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(168, 85, 247, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <Sparkles size={20} color="#c084fc" />
                 </div>
-
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', marginBottom: '4px' }}>
+                  No AI Recommendations Yet
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', maxWidth: '380px', margin: '0 auto 14px', lineHeight: 1.5 }}>
+                  Upload your resume in the Resume & Skills module so CareerBERT can extract your skills and calculate personalized match scores.
+                </p>
                 <button 
-                  className="btn btn-outline-cyan" 
-                  style={{ padding: '6px 12px', fontSize: '0.78rem' }}
-                  onClick={() => setActiveTab('opportunities')}
+                  className="btn btn-primary" 
+                  style={{ padding: '8px 18px', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}
+                  onClick={() => setActiveTab('resume')}
                 >
-                  View Details
+                  <Upload size={14} /> Upload Resume Now
                 </button>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
