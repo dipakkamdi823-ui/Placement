@@ -13,7 +13,6 @@ from .views import (
     StudentVerificationViewSet,
     OrganizationViewSet,
     OpportunityViewSet,
-    CertificateViewSet,
     AuditLogViewSet,
     ReportViewSet,
 )
@@ -22,7 +21,6 @@ router = DefaultRouter()
 router.register("student-verifications", StudentVerificationViewSet, basename="student-verification")
 router.register("organizations", OrganizationViewSet, basename="organization")
 router.register("opportunities", OpportunityViewSet, basename="opportunity")
-router.register("certificates", CertificateViewSet, basename="certificate")
 router.register("audit-log", AuditLogViewSet, basename="audit-log")
 router.register("reports", ReportViewSet, basename="report")
 
@@ -37,8 +35,6 @@ urlpatterns = router.urls
 #   POST   /api/v1/faculty/opportunities/
 #   POST   /api/v1/faculty/opportunities/{id}/approval/
 #   POST   /api/v1/faculty/opportunities/bulk-import/
-#   GET    /api/v1/faculty/certificates/
-#   POST   /api/v1/faculty/certificates/{id}/review/
 #   GET    /api/v1/faculty/audit-log/
 #   GET    /api/v1/faculty/reports/funnel/
 #   GET    /api/v1/faculty/reports/skill-gaps/

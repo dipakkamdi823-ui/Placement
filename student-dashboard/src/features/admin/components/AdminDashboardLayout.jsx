@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ShieldCheck, LayoutDashboard, Users, ArrowRightLeft, LogOut, GraduationCap, Building2, Sun, Moon } from "lucide-react";
+import { ShieldCheck, LayoutDashboard, Users, ArrowRightLeft, LogOut, GraduationCap, Building2, Sun, Moon, BadgeCheck } from "lucide-react";
 import "../../faculty/components/FacultyCommon.css";
 
 export default function AdminDashboardLayout() {
@@ -197,6 +197,20 @@ export default function AdminDashboardLayout() {
                   style={({ isActive }) => (!isActive ? { color: "var(--text-muted)" } : {})}
                 >
                   <ArrowRightLeft size={18} /> Override Controls
+                </NavLink>
+
+                <NavLink
+                  to="/admin/faculty-verification"
+                  className={({ isActive }) =>
+                    `nav-link d-flex align-items-center gap-2 px-3 py-2.5 rounded-3 fw-semibold transition-all ${
+                      isActive
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-muted hover-bg-subtle"
+                    }`
+                  }
+                  style={({ isActive }) => (!isActive ? { color: "var(--text-muted)" } : {})}
+                >
+                  <BadgeCheck size={18} /> Faculty Verify
                 </NavLink>
               </nav>
 

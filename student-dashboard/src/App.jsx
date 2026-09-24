@@ -362,6 +362,7 @@ function StudentDashboardApp() {
               applications={applications}
               onApply={handleApplyToOpportunity}
               resume={resume}
+              skills={skills}
               opportunities={opportunities}
               setActiveTab={setActiveTab}
             />

@@ -280,6 +280,187 @@ class AdminUserManagementView(APIView):
 
         return Response(results, status=status.HTTP_200_OK)
 
+    def post(self, request):
+        """
+        Directly add a Student or Faculty user by Super Admin.
+        """
+        data = request.data
+        user_type = str(data.get("user_type") or data.get("role") or "").strip().title()
+        name = str(data.get("name") or "").strip()
+        email = str(data.get("email") or "").strip().lower()
+        password = str(data.get("password") or "Password@123").strip()
+        department = str(data.get("department") or "Computer Science & Engineering").strip()
+
+        if not email:
+            return Response({"error": "Email address is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not name:
+            return Response({"error": "Full Name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ─── CASE A: CREATE STUDENT ──────────────────────────────────────────
+        if user_type == "Student":
+            roll_number = str(data.get("roll_number") or data.get("enrollment_no") or "").strip()
+            grad_year = data.get("graduation_year") or 2027
+            try:
+                grad_year = int(grad_year)
+            except Exception:
+                grad_year = 2027
+
+            conn = get_db()
+            cursor = conn.cursor()
+
+            try:
+                cursor.execute("SELECT user_id FROM users WHERE LOWER(email) = LOWER(?)", (email,))
+                if cursor.fetchone():
+                    conn.close()
+                    return Response({"error": f"A student with email '{email}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+                pw_hash = '$2b$12$eImiTXuWVxfM37uY4JANjO2ZfW9X2m2kF8a2A2h1W5eG5f5S5S5S5'
+                try:
+                    import bcrypt
+                    salt = bcrypt.gensalt()
+                    pw_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+                except Exception:
+                    try:
+                        from django.contrib.auth.hashers import make_password
+                        pw_hash = make_password(password)
+                    except Exception:
+                        pass
+
+                cursor.execute("""
+                    INSERT INTO users (email, password_hash, role, is_active, is_verified)
+                    VALUES (?, ?, 'Student', 1, 1)
+                """, (email, pw_hash))
+                user_id = cursor.lastrowid
+
+                parts = name.split()
+                first_name = parts[0]
+                last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+                final_roll = roll_number or f"2023CS{user_id:04d}"
+
+                cursor.execute("""
+                    INSERT INTO student_profiles (student_id, roll_number, first_name, last_name, department, graduation_year, cgpa, preferred_opportunity_type, verification_status, placement_readiness_score)
+                    VALUES (?, ?, ?, ?, ?, ?, 0.00, 'Both', 'Approved', 0.00)
+                """, (user_id, final_roll, first_name, last_name, department, grad_year))
+
+                conn.commit()
+                conn.close()
+
+                try:
+                    from faculty_app.models import StudentVerificationRequest
+                    import uuid
+                    if not StudentVerificationRequest.objects.filter(email=email).exists():
+                        StudentVerificationRequest.objects.create(
+                            student_id=uuid.uuid4(),
+                            full_name=name,
+                            roll_number=final_roll,
+                            department=department,
+                            year_of_study=3,
+                            email=email,
+                            status="APPROVED"
+                        )
+                except Exception as ex:
+                    logger.warning(f"Could not sync StudentVerificationRequest: {ex}")
+
+                return Response({
+                    "status": "success",
+                    "message": f"Student '{name}' added successfully.",
+                    "user": {
+                        "id": user_id,
+                        "user_id": f"STU-{user_id}",
+                        "name": name,
+                        "email": email,
+                        "role": "Student",
+                        "enrollment_no": final_roll,
+                        "roll_number": final_roll,
+                        "department": department,
+                        "status": "Active",
+                        "verification_status": "Verified",
+                        "last_login": "Never"
+                    }
+                }, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                conn.close()
+                logger.error(f"Error adding student: {e}")
+                return Response({"error": f"Failed to add student: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # ─── CASE B: CREATE FACULTY ──────────────────────────────────────────
+        elif user_type == "Faculty":
+            employee_id = str(data.get("employee_id") or data.get("enrollment_no") or "").strip()
+            faculty_role = str(data.get("faculty_role") or data.get("role") or "MODERATOR").upper()
+            if faculty_role not in ["MODERATOR", "PLACEMENT_OFFICER", "TPO_INCHARGE", "DEPARTMENT_ADMIN", "SUPER_ADMIN"]:
+                faculty_role = "MODERATOR"
+
+            if not employee_id:
+                employee_id = f"FAC-{int(datetime.now().timestamp()) % 100000}"
+
+            try:
+                from django.contrib.auth import get_user_model
+                from faculty_app.models import Faculty
+                from django.db import transaction
+                User = get_user_model()
+
+                if User.objects.filter(email__iexact=email).exists():
+                    return Response({"error": f"A user with email '{email}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+                if Faculty.objects.filter(employee_id__iexact=employee_id).exists():
+                    return Response({"error": f"A faculty member with Employee ID '{employee_id}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+                username = email.split("@")[0].lower()
+                base_username = username
+                idx = 1
+                while User.objects.filter(username__iexact=username).exists():
+                    username = f"{base_username}{idx}"
+                    idx += 1
+
+                parts = name.split()
+                first_name = parts[0]
+                last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password,
+                        first_name=first_name,
+                        last_name=last_name,
+                        is_active=True
+                    )
+                    faculty = Faculty.objects.create(
+                        user=user,
+                        employee_id=employee_id,
+                        department=department,
+                        role=faculty_role,
+                        mfa_enabled=False,
+                        is_active=True,
+                        verification_status="approved"
+                    )
+
+                return Response({
+                    "status": "success",
+                    "message": f"Faculty '{name}' added successfully.",
+                    "user": {
+                        "id": user.id,
+                        "user_id": f"FAC-{user.id}",
+                        "name": name,
+                        "email": email,
+                        "role": "Faculty",
+                        "faculty_role": faculty_role,
+                        "enrollment_no": employee_id,
+                        "roll_number": employee_id,
+                        "department": department,
+                        "status": "Active",
+                        "verification_status": "Verified",
+                        "last_login": "Never"
+                    }
+                }, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                logger.error(f"Error adding faculty: {e}")
+                return Response({"error": f"Failed to add faculty: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        else:
+            return Response({"error": "Invalid user_type. Must be 'Student' or 'Faculty'."}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class AdminUserActionView(APIView):
     permission_classes = [IsSuperAdminUser]
@@ -503,4 +684,122 @@ class AdminOverridesView(APIView):
             "action": action,
             "reason": reason,
             "message": "Super admin override successfully committed to system database."
+        }, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# 4. Faculty Verification  →  GET  /api/admin/faculty-verifications/
+#                             POST /api/admin/faculty-verifications/<id>/review/
+# ---------------------------------------------------------------------------
+
+class AdminFacultyVerificationView(APIView):
+    """
+    Lists all faculty members with their current verification status.
+    Admin can Approve or Reject a faculty account from this endpoint.
+    """
+    permission_classes = [IsSuperAdminUser]
+
+    def get(self, request):
+        results = []
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+
+            # Fetch faculty joined with Django auth_user
+            cursor.execute("""
+                SELECT f.id as fac_id, f.employee_id, f.department, f.role as faculty_role,
+                       f.is_active, f.verification_status, f.mfa_enabled,
+                       u.id as user_id, u.username, u.email, u.first_name, u.last_name,
+                       u.date_joined
+                FROM faculty f
+                JOIN auth_user u ON f.user_id = u.id
+                ORDER BY u.date_joined DESC
+            """)
+            rows = cursor.fetchall()
+            conn.close()
+
+            for r in rows:
+                rd = dict(r) if isinstance(r, dict) else {}
+                fn = rd.get("first_name") or ""
+                ln = rd.get("last_name") or ""
+                name = f"{fn} {ln}".strip() or rd.get("username") or rd.get("email", "").split("@")[0].title()
+                is_active = rd.get("is_active", 1)
+                emp_id = rd.get("employee_id") or f"FAC-{rd.get('user_id')}"
+
+                # Read verification_status directly from the faculty table
+                raw_verif = str(rd.get("verification_status") or "").lower().strip()
+                if raw_verif == "approved" or (not raw_verif and is_active == 1):
+                    verif_status = "Approved"
+                elif raw_verif == "rejected":
+                    verif_status = "Rejected"
+                elif raw_verif == "pending":
+                    verif_status = "Pending"
+                else:
+                    verif_status = "Approved" if is_active == 1 else "Pending"
+
+                results.append({
+                    "id": rd.get("user_id"),
+                    "fac_id": rd.get("fac_id"),
+                    "employee_id": emp_id,
+                    "name": name,
+                    "email": rd.get("email", ""),
+                    "department": rd.get("department") or "Not Assigned",
+                    "role": rd.get("faculty_role") or "FACULTY",
+                    "is_active": is_active,
+                    "verification_status": verif_status,
+                    "mfa_enabled": bool(rd.get("mfa_enabled", False)),
+                    "joined": str(rd.get("date_joined", ""))[:10] or "N/A",
+                })
+        except Exception as ex:
+            logger.error(f"Error fetching faculty verifications: {ex}")
+
+        return Response(results, status=status.HTTP_200_OK)
+
+
+class AdminFacultyVerificationActionView(APIView):
+    """
+    POST /api/admin/faculty-verifications/<faculty_user_id>/review/
+    Body: { "action": "APPROVE" | "REJECT", "reason": "..." }
+    """
+    permission_classes = [IsSuperAdminUser]
+
+    def post(self, request, faculty_id):
+        action = (request.data.get("action") or "APPROVE").upper()
+        reason = request.data.get("reason", "")
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        new_is_active = 1 if "APPROVE" in action else 0
+        new_status_label = "Approved" if new_is_active == 1 else "Rejected"
+
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+
+            new_verif_status = "approved" if new_is_active == 1 else "rejected"
+
+            # Update faculty table — both is_active AND verification_status
+            cursor.execute(
+                "UPDATE faculty SET is_active = ?, verification_status = ? WHERE user_id = ? OR id = ?",
+                (new_is_active, new_verif_status, faculty_id, faculty_id)
+            )
+            # Update auth_user table (Django auth layer)
+            cursor.execute(
+                "UPDATE auth_user SET is_active = ? WHERE id = ?",
+                (new_is_active, faculty_id)
+            )
+
+            conn.commit()
+            conn.close()
+        except Exception as ex:
+            logger.error(f"Error reviewing faculty {faculty_id}: {ex}")
+            return Response({"error": str(ex)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "status": "success",
+            "faculty_id": faculty_id,
+            "action": action,
+            "verification_status": new_status_label,
+            "reason": reason,
+            "reviewed_at": now_str,
+            "message": f"Faculty account has been {new_status_label.lower()} successfully."
         }, status=status.HTTP_200_OK)

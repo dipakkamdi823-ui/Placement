@@ -13,7 +13,6 @@ from .models import (
     Faculty,
     Organization,
     Opportunity,
-    Certificate,
     StudentVerificationRequest,
     AuditLogEntry,
 )
@@ -109,28 +108,6 @@ class OpportunityApprovalActionSerializer(serializers.Serializer):
             )
         return attrs
 
-
-class CertificateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Certificate
-        fields = [
-            "id", "student_id", "opportunity", "organization", "file_url",
-            "issue_date", "verification_status", "verified_by", "verified_at",
-            "rejection_reason", "created_at",
-        ]
-        read_only_fields = ["id", "verification_status", "verified_by", "verified_at", "created_at"]
-
-
-class CertificateVerificationActionSerializer(serializers.Serializer):
-    action = serializers.ChoiceField(choices=["VERIFY", "REJECT"])
-    rejection_reason = serializers.CharField(required=False, allow_blank=True)
-
-    def validate(self, attrs):
-        if attrs["action"] == "REJECT" and not attrs.get("rejection_reason"):
-            raise serializers.ValidationError(
-                {"rejection_reason": "Required when rejecting a certificate."}
-            )
-        return attrs
 
 
 class StudentVerificationRequestSerializer(serializers.ModelSerializer):

@@ -29,10 +29,9 @@ export default function FacultyLoginPage() {
     setValidationError("");
     const val = usernameOrEmail.trim();
 
-    // Any valid email format is accepted for faculty login
-
     try {
       const result = await login(val, password);
+      // Always navigate to portal — RequireFacultyAuth handles the pending block screen
       if (!result.mfaRequired) navigate("/faculty/student-verifications");
     } catch {
       /* error is surfaced via useAuth().error */

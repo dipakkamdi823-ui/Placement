@@ -9,6 +9,7 @@ import AdminDashboardLayout from "../components/AdminDashboardLayout";
 import AdminOverview from "../components/AdminOverview";
 import AdminUserManagement from "../components/AdminUserManagement";
 import AdminOverrides from "../components/AdminOverrides";
+import AdminFacultyVerification from "../components/AdminFacultyVerification";
 import AdminLoginPage from "../components/AdminLoginPage";
 import AdminSignUpPage from "../components/AdminSignUpPage";
 import AdminForgotPasswordPage from "../components/AdminForgotPasswordPage";
@@ -32,6 +33,7 @@ export default function AdminRoutes() {
         <Route path="overview" element={<AdminOverview />} />
         <Route path="users" element={<AdminUserManagement />} />
         <Route path="overrides" element={<AdminOverrides />} />
+        <Route path="faculty-verification" element={<AdminFacultyVerification />} />
       </Route>
     </Routes>
   );

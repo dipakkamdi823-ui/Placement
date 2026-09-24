@@ -93,6 +93,8 @@ export const authApi = {
     client.post("/faculty/auth/mfa/verify/", { mfa_token: mfaToken, otp_code: otpCode }),
   signup: (payload) =>
     client.post("/faculty/auth/signup/", payload),
+  status: () =>
+    client.get("/faculty/auth/status/"),
 };
 
 // --- Student Verification -------------------------------------------------
@@ -136,18 +138,7 @@ export const opportunityApi = {
   },
 };
 
-// --- Certificates -----------------------------------------------------------
 
-export const certificateApi = {
-  list: (params) => client.get("/faculty/certificates/", { params }),
-  create: (payload) => client.post("/faculty/certificates/", payload),
-  remove: (id) => client.delete(`/faculty/certificates/${id}/`),
-  review: (id, action, rejectionReason = "") =>
-    client.post(`/faculty/certificates/${id}/review/`, {
-      action,
-      rejection_reason: rejectionReason,
-    }),
-};
 
 // --- Reports & Analytics -----------------------------------------------------
 

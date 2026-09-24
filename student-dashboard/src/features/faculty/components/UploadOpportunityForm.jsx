@@ -298,7 +298,7 @@ export default function UploadOpportunityForm({ onSuccess }) {
         </div>
 
         <div className="col-md-3">
-          <label className="form-label fw-semibold" style={{ color: "var(--text-muted)" }}>Compensation (INR/month)</label>
+          <label className="form-label fw-semibold" style={{ color: "var(--text-muted)" }}>Stipend (INR/month)</label>
           <input
             type="number"
             min="0"

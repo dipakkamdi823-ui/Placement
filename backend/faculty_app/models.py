@@ -58,6 +58,19 @@ class Faculty(TimeStampedModel):
     mfa_secret = models.CharField(max_length=64, blank=True, null=True)  # TOTP secret, encrypted at rest via field-level encryption in production
     is_active = models.BooleanField(default=True)
 
+    class VerificationStatus(models.TextChoices):
+        PENDING  = "pending",  "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    # Tracks the exact admin decision — distinct from is_active so we can
+    # tell apart "never reviewed" (pending) vs "was approved then revoked" (rejected).
+    verification_status = models.CharField(
+        max_length=16,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.PENDING,
+    )
+
     class Meta:
         db_table = "faculty"
         indexes = [models.Index(fields=["department"]), models.Index(fields=["role"])]

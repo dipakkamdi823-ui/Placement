@@ -152,7 +152,87 @@ function getUpskillLink(skill) {
   return `https://www.google.com/search?q=learn+${encodeURIComponent(skill)}+free+course`;
 }
 
-export default function AIRecommendations({ recommendations = [], applications = [], onApply, resume = null, opportunities = [], setActiveTab }) {
+const SKILL_ALIASES = {
+  js: 'javascript', javascript: 'js',
+  ts: 'typescript', typescript: 'ts',
+  py: 'python', python: 'py',
+  react: 'react.js', 'react.js': 'react', reactjs: 'react',
+  node: 'node.js', 'node.js': 'node', nodejs: 'node',
+  vue: 'vue.js', 'vue.js': 'vue', vuejs: 'vue',
+  'c++': 'cpp', cpp: 'c++',
+  postgres: 'postgresql', postgresql: 'postgres',
+  mongo: 'mongodb', mongodb: 'mongo',
+  k8s: 'kubernetes', kubernetes: 'k8s',
+  ml: 'machine learning', 'machine learning': 'ml',
+  dl: 'deep learning', 'deep learning': 'dl',
+  nlp: 'natural language processing', 'natural language processing': 'nlp',
+  html5: 'html', html: 'html5',
+  css3: 'css', css: 'css3',
+};
+
+const SHORT_LANGUAGES = {
+  c: new Set(['c', 'c language', 'c programming', 'c/c++', 'c/cpp', 'ansi c']),
+  r: new Set(['r', 'r programming', 'r language', 'r-lang']),
+  go: new Set(['go', 'golang', 'go language', 'go-lang']),
+};
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function isSkillMatch(studentSkill, reqSkill) {
+  const s = String(studentSkill || '').trim().toLowerCase();
+  const r = String(reqSkill || '').trim().toLowerCase();
+  if (!s || !r) return false;
+
+  // 1. Exact match
+  if (s === r) return true;
+
+  // 2. Known canonical aliases
+  if (SKILL_ALIASES[s] === r || SKILL_ALIASES[r] === s) return true;
+
+  // 3. Handle compound skills (e.g. 'HTML/CSS', 'C/C++')
+  if (r.includes('/')) {
+    const subReqs = r.split('/').map(x => x.trim()).filter(Boolean);
+    if (subReqs.some(sub => isSkillMatch(s, sub))) return true;
+  }
+  if (s.includes('/')) {
+    const subStudents = s.split('/').map(x => x.trim()).filter(Boolean);
+    if (subStudents.some(sub => isSkillMatch(sub, r))) return true;
+  }
+
+  // 4. Short skills (<= 2 chars like 'c', 'r', 'go') must NEVER match via substring containment!
+  if (SHORT_LANGUAGES[s]) {
+    return SHORT_LANGUAGES[s].has(r);
+  }
+  if (SHORT_LANGUAGES[r]) {
+    return SHORT_LANGUAGES[r].has(s);
+  }
+  if (s.length <= 2 || r.length <= 2) {
+    return s === r;
+  }
+
+  // 5. Whole-word boundary regex match
+  try {
+    const sRegex = new RegExp(`\\b${escapeRegex(s)}\\b`, 'i');
+    if (sRegex.test(r)) return true;
+
+    const rRegex = new RegExp(`\\b${escapeRegex(r)}\\b`, 'i');
+    if (rRegex.test(s)) return true;
+  } catch (_) {}
+
+  return false;
+}
+
+export default function AIRecommendations({
+  recommendations = [],
+  applications = [],
+  onApply,
+  resume = null,
+  skills = [],
+  opportunities = [],
+  setActiveTab
+}) {
   const [expandedCard, setExpandedCard] = useState(null);
   const [activeTier, setActiveTier] = useState('all');
   const [localApplied, setLocalApplied] = useState(new Set());
@@ -205,27 +285,92 @@ export default function AIRecommendations({ recommendations = [], applications =
     setTimeout(() => setApplyMessage(null), 4000);
   };
 
-  /* Build enriched display list */
+  // Compile active student skills from verified matrix & resume
+  const studentSkillList = useMemo(() => {
+    const set = new Set();
+    if (Array.isArray(skills)) {
+      skills.forEach(s => {
+        const name = typeof s === 'string' ? s : s?.skill_name;
+        if (name && name.trim()) set.add(name.trim());
+      });
+    }
+    if (resume && Array.isArray(resume.skills)) {
+      resume.skills.forEach(s => {
+        const name = typeof s === 'string' ? s : s?.skill_name;
+        if (name && name.trim()) set.add(name.trim());
+      });
+    }
+    if (resume?.parsed_data?.skills && Array.isArray(resume.parsed_data.skills)) {
+      resume.parsed_data.skills.forEach(s => {
+        const name = typeof s === 'string' ? s : s?.skill_name;
+        if (name && name.trim()) set.add(name.trim());
+      });
+    }
+    return Array.from(set);
+  }, [skills, resume]);
+
+  /* Build enriched display list with strictly dynamic skill matching */
   const displayList = useMemo(() => {
-    if (recommendations.length > 0) return recommendations;
-    // Fallback: use raw opportunities with estimated scores
-    return opportunities.map(o => ({
-      id: o.id || o.opportunity_id,
-      title: o.title,
-      organization: o.organization,
-      stipend: o.stipend,
-      description: o.description,
-      domain: o.domain,
-      duration: o.duration,
-      location: o.location,
-      deadline: o.deadline,
-      match_score: hasResume ? 55 : 0,
-      model_source: 'Institutional Verification Engine',
-      explanation: 'Curated approved opportunity available for institutional applications.',
-      matched_skills: o.required_skills ? o.required_skills.slice(0, 3) : [],
-      missing_skills: o.required_skills ? o.required_skills.slice(3, 6) : [],
-    }));
-  }, [recommendations, opportunities, hasResume]);
+    const sourceList = recommendations.length > 0 ? recommendations : opportunities;
+
+    return sourceList.map(o => {
+      const rawReq = o.required_skills;
+      let reqSkills = [];
+      if (Array.isArray(rawReq)) {
+        reqSkills = rawReq.filter(Boolean);
+      } else if (typeof rawReq === 'string' && rawReq.trim()) {
+        try {
+          const parsed = JSON.parse(rawReq);
+          reqSkills = Array.isArray(parsed) ? parsed : [rawReq];
+        } catch {
+          reqSkills = rawReq.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+
+      // Compute exact dynamic matching against the student's active skills
+      const matched = [];
+      const missing = [];
+
+      reqSkills.forEach(rs => {
+        const isMatched = studentSkillList.some(ss => isSkillMatch(ss, rs));
+        if (isMatched) {
+          matched.push(rs);
+        } else {
+          missing.push(rs);
+        }
+      });
+
+      const total = reqSkills.length;
+      const matchScore = total > 0 && studentSkillList.length > 0
+        ? Math.round((matched.length / total) * 100)
+        : 0;
+
+      const explanation = matched.length > 0
+        ? `Matched on ${matched.length} skill${matched.length !== 1 ? 's' : ''}: ${matched.join(', ')}.`
+        : reqSkills.length > 0
+          ? `None of your skills match this opportunity's requirements (${reqSkills.slice(0, 3).join(', ')}${reqSkills.length > 3 ? '...' : ''}).`
+          : 'No required skills listed for this opportunity.';
+
+      return {
+        ...o,
+        id: o.id || o.opportunity_id,
+        title: o.title,
+        organization: o.organization || o.organization_name || 'Partner Org',
+        stipend: o.stipend || (o.is_unpaid ? 'Unpaid / Volunteer' : 'Stipend available'),
+        description: o.description,
+        domain: o.domain || (o.opportunity_type === 'INTERNSHIP' ? 'Software Dev' : 'Social & Community'),
+        duration: o.duration || (o.duration_weeks ? `${o.duration_weeks} weeks` : 'Flexible'),
+        location: o.location || 'Remote',
+        deadline: o.deadline || o.application_deadline,
+        required_skills: reqSkills,
+        match_score: matchScore,
+        model_source: 'Smart Semantic Skill Alignment Engine',
+        explanation: explanation,
+        matched_skills: matched,
+        missing_skills: missing,
+      };
+    });
+  }, [recommendations, opportunities, studentSkillList]);
 
   /* Tier classification */
   const tiered = useMemo(() => {

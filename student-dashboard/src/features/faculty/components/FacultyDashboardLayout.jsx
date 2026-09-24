@@ -14,7 +14,6 @@ import {
   FileCheck,
   Building2, 
   Briefcase, 
-  Award, 
   BarChart3, 
   FileText, 
   Menu, 
@@ -30,7 +29,6 @@ const NAV_ITEMS = [
   { to: "/faculty/applications", label: "Applications Review", icon: FileCheck },
   { to: "/faculty/organizations", label: "Organizations", icon: Building2 },
   { to: "/faculty/opportunities", label: "Opportunities", icon: Briefcase },
-  { to: "/faculty/certificates", label: "Certificates", icon: Award },
   { to: "/faculty/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/faculty/reports", label: "Reports", icon: FileText },
 ];

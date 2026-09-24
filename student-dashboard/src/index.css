@@ -59,6 +59,67 @@
   padding: 0;
 }
 
+/* ── Prevent the text I-beam cursor on non-editable elements ── */
+/* All elements use default arrow cursor by default */
+*, *::before, *::after {
+  cursor: default;
+}
+
+/* Restore correct cursors for interactive/editable elements */
+a, button, label, [role="button"], [role="tab"],
+[role="menuitem"], [role="option"], [role="checkbox"],
+[role="radio"], [role="switch"], [role="link"],
+summary, select, [tabindex]:not([tabindex="-1"]) {
+  cursor: pointer !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+textarea,
+[contenteditable="true"] {
+  cursor: text !important;
+}
+
+input[type="range"] { cursor: ew-resize !important; }
+input[type="file"]  { cursor: pointer !important; }
+
+input:disabled, button:disabled, textarea:disabled,
+select:disabled, [disabled] {
+  cursor: not-allowed !important;
+}
+
+/* Prevent accidental text selection on UI labels, badges, nav items */
+h1, h2, h3, h4, h5, h6,
+p, span, li, label, small, strong, em,
+.badge, .btn, nav, header, footer,
+.glass-panel h3, .glass-panel h4,
+.nav-link, [class*="sidebar"],
+[class*="tab"], [class*="label"],
+[class*="heading"], [class*="title"],
+[class*="badge"], [class*="tag"],
+[class*="chip"], [class*="stat"],
+[class*="card-title"], [class*="card-header"] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Text that SHOULD be selectable (content areas) */
+input, textarea, [contenteditable="true"],
+pre, code, .selectable, td, th,
+article, .content-text {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+
 body {
   background-color: var(--bg-dark);
   color: var(--text-main);

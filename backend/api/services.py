@@ -165,25 +165,111 @@ class SentenceBertRecommendationEngine(AbstractNLPRecommendationEngine):
                 })
         return extracted
 
-    def calculate_compatibility(self, user_skills: list, required_skills: list) -> dict:
-        user_skills_lower = [s.lower() for s in user_skills]
-        matched = [r_skill for r_skill in required_skills if any(u_skill in r_skill.lower() or r_skill.lower() in u_skill for u_skill in user_skills_lower)]
-        missing = [r_skill for r_skill in required_skills if r_skill not in matched]
+    @staticmethod
+    def is_skill_match(student_skill: str, req_skill: str) -> bool:
+        import re
+        s = str(student_skill or "").strip().lower()
+        r = str(req_skill or "").strip().lower()
+        if not s or not r:
+            return False
 
-        if not user_skills:
-            match_score = 35
-            explanation = "No verified skills found. Upload your resume or add skills to view tailored match insights."
-        elif len(required_skills) > 0:
-            score = int(40 + (len(matched) / len(required_skills)) * 55)
-            match_score = min(98, max(45, score))
-            explanation = f"Matched on {len(matched)} skill{'s' if len(matched) != 1 else ''}: {', '.join(matched) if matched else 'General fit based on profile'}."
+        # 1. Exact match (case-insensitive)
+        if s == r:
+            return True
+
+        # 2. Known canonical aliases
+        aliases = {
+            'js': 'javascript', 'javascript': 'js',
+            'ts': 'typescript', 'typescript': 'ts',
+            'py': 'python', 'python': 'py',
+            'react': 'react.js', 'react.js': 'react', 'reactjs': 'react',
+            'node': 'node.js', 'node.js': 'node', 'nodejs': 'node',
+            'vue': 'vue.js', 'vue.js': 'vue', 'vuejs': 'vue',
+            'c++': 'cpp', 'cpp': 'c++',
+            'postgres': 'postgresql', 'postgresql': 'postgres',
+            'mongo': 'mongodb', 'mongodb': 'mongo',
+            'k8s': 'kubernetes', 'kubernetes': 'k8s',
+            'ml': 'machine learning', 'machine learning': 'ml',
+            'dl': 'deep learning', 'deep learning': 'dl',
+            'nlp': 'natural language processing', 'natural language processing': 'nlp',
+            'html5': 'html', 'html': 'html5',
+            'css3': 'css', 'css': 'css3',
+        }
+        if aliases.get(s) == r or aliases.get(r) == s:
+            return True
+
+        # 3. Handle compound skills (e.g., 'HTML/CSS', 'C/C++')
+        if '/' in r:
+            sub_reqs = [sub.strip() for sub in r.split('/') if sub.strip()]
+            if any(SentenceBertRecommendationEngine.is_skill_match(s, sub) for sub in sub_reqs):
+                return True
+        if '/' in s:
+            sub_students = [sub.strip() for sub in s.split('/') if sub.strip()]
+            if any(SentenceBertRecommendationEngine.is_skill_match(sub, r) for sub in sub_students):
+                return True
+
+        # 4. Short skills (<= 2 chars like 'c', 'r', 'go') must NEVER match via substring containment!
+        short_langs = {
+            'c': {'c', 'c language', 'c programming', 'c/c++', 'c/cpp', 'ansi c'},
+            'r': {'r', 'r programming', 'r language', 'r-lang'},
+            'go': {'go', 'golang', 'go language', 'go-lang'},
+        }
+        if s in short_langs:
+            return r in short_langs[s]
+        if r in short_langs:
+            return s in short_langs[r]
+        if len(s) <= 2 or len(r) <= 2:
+            return s == r
+
+        # 5. Whole-word boundary regex match for multi-word or compound phrases
+        pattern_s = r'\b' + re.escape(s) + r'\b'
+        if re.search(pattern_s, r):
+            return True
+
+        pattern_r = r'\b' + re.escape(r) + r'\b'
+        if re.search(pattern_r, s):
+            return True
+
+        return False
+
+    def calculate_compatibility(self, user_skills: list, required_skills: list) -> dict:
+        if not user_skills or not required_skills:
+            return {
+                "match_score": 0,
+                "matched_skills": [],
+                "missing_skills": list(required_skills),
+                "explanation": "No skills to compare against this opportunity."
+            }
+
+        matched = []
+        missing = []
+        for r_skill in required_skills:
+            # Check if any user skill genuinely matches this required skill
+            is_matched = any(
+                SentenceBertRecommendationEngine.is_skill_match(u_skill, r_skill)
+                for u_skill in user_skills
+            )
+            if is_matched:
+                matched.append(r_skill)
+            else:
+                missing.append(r_skill)
+
+        total = len(required_skills)
+        if total == 0:
+            match_score = 0
         else:
-            match_score = 60
-            explanation = "General fit based on profile."
+            raw = int((len(matched) / total) * 100)
+            match_score = raw  # Exact dynamic percentage based strictly on matching skills
+
+        if len(matched) == 0:
+            req_preview = ', '.join(required_skills[:4]) + ('...' if len(required_skills) > 4 else '')
+            explanation = f"None of your skills match this opportunity's requirements ({req_preview})."
+        else:
+            explanation = f"Matched on {len(matched)} skill{'s' if len(matched) != 1 else ''}: {', '.join(matched)}."
 
         return {
             "match_score": match_score,
-            "matched_skills": matched if matched else ([] if not user_skills else ["General Alignment"]),
+            "matched_skills": matched,       # Only skills student actually has
             "missing_skills": missing,
             "explanation": explanation
         }
@@ -197,12 +283,24 @@ class SentenceBertRecommendationEngine(AbstractNLPRecommendationEngine):
             from faculty_app.models import Opportunity
             qs = Opportunity.objects.filter(status="APPROVED").select_related('organization')
             for o in qs:
-                req_skills = o.required_skills if isinstance(o.required_skills, list) else ["React", "Python"]
+                # Always use the real required_skills from the DB — never guess
+                req_skills = []
+                if isinstance(o.required_skills, list):
+                    req_skills = [s for s in o.required_skills if isinstance(s, str) and s.strip()]
+                elif isinstance(o.required_skills, str):
+                    try:
+                        import json
+                        parsed = json.loads(o.required_skills)
+                        req_skills = parsed if isinstance(parsed, list) else []
+                    except Exception:
+                        pass
+
+                domain = "Software Dev" if o.opportunity_type == "INTERNSHIP" else "Social & Community"
                 opps.append({
                     "id": str(o.id),
                     "title": o.title,
                     "organization": o.organization.name if o.organization else "Partner Org",
-                    "domain": "Software Dev" if o.opportunity_type == "INTERNSHIP" else "Environment & Community",
+                    "domain": domain,
                     "location": o.location or "Remote",
                     "work_mode": o.work_mode.title() if o.work_mode else "Remote",
                     "stipend": f"{o.compensation_currency} {o.compensation_amount:,.0f}/mo" if o.compensation_amount else "Unpaid / Volunteer",
@@ -224,21 +322,41 @@ class SentenceBertRecommendationEngine(AbstractNLPRecommendationEngine):
             conn.close()
             for r in opp_rows:
                 opp = dict(r)
+                # Read required_skills from DB — it may be stored as JSON string
+                raw_skills = opp.get("required_skills") or opp.get("skills_required") or ""
+                if isinstance(raw_skills, list):
+                    req_skills = raw_skills
+                elif isinstance(raw_skills, str) and raw_skills.strip():
+                    try:
+                        import json
+                        parsed = json.loads(raw_skills)
+                        req_skills = parsed if isinstance(parsed, list) else [s.strip() for s in raw_skills.split(",") if s.strip()]
+                    except Exception:
+                        req_skills = [s.strip() for s in raw_skills.split(",") if s.strip()]
+                else:
+                    # No required skills defined — infer from type
+                    if opp.get("opportunity_type", "").lower() in ("ngo", "volunteer", "community"):
+                        req_skills = ["Communication", "Social Work", "Teamwork"]
+                    else:
+                        req_skills = ["Python", "SQL", "Git"]
+
+                domain = "Software Dev" if opp.get("opportunity_type") == "Internship" else "Social & Community"
                 opps.append({
                     "id": str(opp["opportunity_id"]),
                     "title": opp["title"],
                     "organization": opp["organization_name"],
-                    "domain": "Engineering & AI" if opp["opportunity_type"] == "Internship" else "Environment & Community",
+                    "domain": domain,
                     "location": opp["location"] or "Remote",
                     "work_mode": opp.get("mode") or "Remote",
-                    "stipend": "₹35,000 / month" if opp["opportunity_type"] == "Internship" else "₹10,000 / month",
+                    "stipend": "₹35,000 / month" if opp.get("opportunity_type") == "Internship" else "Unpaid / Volunteer",
                     "description": opp.get("description", "Opportunity position"),
-                    "required_skills": ["Python", "SQL", "React", "Git"]
+                    "required_skills": req_skills
                 })
 
         results = []
         for opp in opps:
             compat = self.calculate_compatibility(user_skills, opp["required_skills"])
+            # Only include if there is at least some match OR the student has no skills
             results.append({
                 "id": opp["id"],
                 "title": opp["title"],
@@ -390,7 +508,7 @@ class PlacementReadinessService(AbstractPlacementReadinessService):
         # -------------------------------------------------------------
         # Factor 3: Profile Completeness Score (0 - 100, 20% weight)
         # -------------------------------------------------------------
-        profile_score = 50
+        profile_score = 0
         if sp_row:
             check_fields = [
                 sp_row.get('first_name'), sp_row.get('last_name'),
@@ -410,7 +528,7 @@ class PlacementReadinessService(AbstractPlacementReadinessService):
         # Factor 4: Application Activity Score (0 - 100, 15% weight)
         # -------------------------------------------------------------
         if app_count == 0:
-            app_score = 15 # Initial baseline
+            app_score = 0  # No baseline; new students start at 0
         elif app_count == 1:
             app_score = 45
         elif app_count == 2:
@@ -423,7 +541,7 @@ class PlacementReadinessService(AbstractPlacementReadinessService):
         # Composite Placement Readiness Score (0 - 100)
         # -------------------------------------------------------------
         if not resume_row and num_skills == 0 and app_count == 0:
-            overall_score = min(35, profile_score // 3)
+            overall_score = 0
         else:
             raw_overall = (resume_score * 0.35) + (skill_score * 0.30) + (profile_score * 0.20) + (app_score * 0.15)
             overall_score = max(0, min(100, int(round(raw_overall))))

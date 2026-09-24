@@ -52,11 +52,13 @@ export function FacultyAuthProvider({ children }) {
       }
       localStorage.setItem("saiotaf_access_token", data.access);
       localStorage.setItem("saiotaf_refresh_token", data.refresh);
+      // Store verification status so RequireFacultyAuth can gate the portal
+      localStorage.setItem("saiotaf_faculty_verification", data.verification_status || "approved");
       if (data.user) {
         localStorage.setItem("saiotaf_user", JSON.stringify(data.user));
       }
       setIsAuthenticated(true);
-      return { mfaRequired: false };
+      return { mfaRequired: false, verificationStatus: data.verification_status || "approved" };
     } catch (err) {
       setError(err.response?.data?.detail || "Login failed. Please try again.");
       throw err;
@@ -93,6 +95,11 @@ export function FacultyAuthProvider({ children }) {
       const { data } = await authApi.signup(payload);
       localStorage.setItem("saiotaf_access_token", data.access);
       localStorage.setItem("saiotaf_refresh_token", data.refresh);
+      // New accounts are always pending until admin approves
+      localStorage.setItem("saiotaf_faculty_verification", data.verification_status || "pending");
+      if (data.user) {
+        localStorage.setItem("saiotaf_user", JSON.stringify(data.user));
+      }
       setIsAuthenticated(true);
       return data;
     } catch (err) {
@@ -114,6 +121,7 @@ export function FacultyAuthProvider({ children }) {
     localStorage.removeItem("saiotaf_access_token");
     localStorage.removeItem("saiotaf_refresh_token");
     localStorage.removeItem("saiotaf_user");
+    localStorage.removeItem("saiotaf_faculty_verification");
     setIsAuthenticated(false);
     setMfaPending(null);
   }, []);

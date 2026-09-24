@@ -39,7 +39,7 @@ export default function OpportunitiesModule({
   const hasResume = Boolean(resume && resume.filename);
 
   const domains = ['All', 'Data Science', 'Software Dev', 'Social Work/NGO', 'Cloud / DevOps'];
-  const modes = ['All', 'Hybrid', 'Remote', 'On-site', 'Onsite'];
+  const modes = ['All', 'Hybrid', 'Remote', 'On-site'];
 
   const filteredOpps = useMemo(() => {
     return opportunities.filter(opp => {

@@ -3,15 +3,15 @@ import { Award, Zap, TrendingUp, CheckCircle, Target, ShieldCheck, AlertCircle }
 
 export default function ReadinessScoreCard({ readiness = {} }) {
   const safeReadiness = readiness || {};
-  const overall_score = safeReadiness.overall_score ?? 60;
+  const overall_score = safeReadiness.overall_score ?? 0;
   const category_scores = safeReadiness.category_scores || {
-    resume_quality: 70,
-    skill_coverage: 65,
-    application_activity: 50
+    resume_quality: 0,
+    skill_coverage: 0,
+    application_activity: 0
   };
   const actionable_suggestions = safeReadiness.actionable_suggestions || [];
-  const probability_text = safeReadiness.probability_text || "Moderate Placement Probability";
-  const percentile_text = safeReadiness.percentile_text || "Top 30% Percentile in Dept";
+  const probability_text = safeReadiness.probability_text || (overall_score === 0 ? "No Score Yet — Add Skills & Resume" : "Moderate Placement Probability");
+  const percentile_text = safeReadiness.percentile_text || (overall_score === 0 ? "Complete your profile to get ranked" : "Top 30% Percentile in Dept");
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1000px', margin: '0 auto' }}>

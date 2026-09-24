@@ -22,7 +22,6 @@ from .models import (
     Faculty,
     Organization,
     Opportunity,
-    Certificate,
     StudentVerificationRequest,
     AuditLogEntry,
 )
@@ -32,8 +31,6 @@ from .serializers import (
     OrganizationVerificationActionSerializer,
     OpportunitySerializer,
     OpportunityApprovalActionSerializer,
-    CertificateSerializer,
-    CertificateVerificationActionSerializer,
     StudentVerificationRequestSerializer,
     StudentVerificationActionSerializer,
     AuditLogEntrySerializer,
@@ -505,39 +502,6 @@ class OpportunityViewSet(viewsets.ViewSet):
     def destroy(self, request, pk=None):
         Opportunity.objects.filter(pk=pk).delete()
         return Response({"status": "deleted", "id": pk}, status=status.HTTP_204_NO_CONTENT)
-
-
-# ---------------------------------------------------------------------------
-# Certificate Verification  (FR-FAC-05)
-# ---------------------------------------------------------------------------
-
-class CertificateViewSet(viewsets.ViewSet):
-    permission_classes = [IsFacultyUser]
-
-    def list(self, request):
-        qs = Certificate.objects.select_related('organization').all()
-
-        results = []
-        for cert in qs:
-            results.append({
-                "id": str(cert.id),
-                "student_id": str(cert.student_id),
-                "student_name": f"Student {str(cert.student_id)[:8]}",
-                "roll_number": f"ROLL-{str(cert.student_id)[:6].upper()}",
-                "issuing_organization": cert.organization.name if cert.organization else "N/A",
-                "title": f"Certificate for {cert.organization.name if cert.organization else 'Program'}",
-                "file_url": cert.file_url,
-                "verification_status": cert.verification_status
-            })
-        return Response(results, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=["post"], url_path="review")
-    def review(self, request, pk=None):
-        action_val = request.data.get("action", "VERIFY")
-        new_status = "VERIFIED" if action_val == "VERIFY" else "REJECTED"
-
-        Certificate.objects.filter(pk=pk).update(verification_status=new_status)
-        return Response({"status": "success", "id": pk, "verification_status": new_status})
 
 
 # ---------------------------------------------------------------------------

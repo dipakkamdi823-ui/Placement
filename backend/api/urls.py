@@ -20,6 +20,12 @@ urlpatterns = [
     path('admin/overrides/', admin_views.AdminOverridesView.as_view(), name='admin-overrides'),
     path('admin/overrides', admin_views.AdminOverridesView.as_view(), name='admin-overrides-noslash'),
 
+    # Faculty Verification
+    path('admin/faculty-verifications/', admin_views.AdminFacultyVerificationView.as_view(), name='admin-faculty-verif'),
+    path('admin/faculty-verifications', admin_views.AdminFacultyVerificationView.as_view(), name='admin-faculty-verif-noslash'),
+    path('admin/faculty-verifications/<str:faculty_id>/review/', admin_views.AdminFacultyVerificationActionView.as_view(), name='admin-faculty-verif-action'),
+    path('admin/faculty-verifications/<str:faculty_id>/review', admin_views.AdminFacultyVerificationActionView.as_view(), name='admin-faculty-verif-action-noslash'),
+
     # 14.1 Auth
     path('auth/login', views.login),
     path('auth/register', views.register),
@@ -52,6 +58,4 @@ urlpatterns = [
     path('notifications', views.get_notifications),
     path('notifications/<str:notif_id>/read', views.mark_notification_read),
 
-    # 14.8 Student Certificates (read-only, faculty-issued)
-    path('certificates/my', views.get_my_certificates),
 ]

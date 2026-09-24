@@ -42,11 +42,17 @@ def _issue_tokens(user) -> dict:
     access_token["username"] = user.username
     access_token["first_name"] = user.first_name
     access_token["last_name"] = user.last_name
-    
+
     faculty_role = "Faculty"
+    faculty_is_active = True
+    faculty_verif_status = "approved"
     if hasattr(user, "faculty_profile") and user.faculty_profile:
         faculty_role = user.faculty_profile.role
+        faculty_is_active = bool(user.faculty_profile.is_active)
+        faculty_verif_status = user.faculty_profile.verification_status or ("approved" if faculty_is_active else "pending")
     access_token["role"] = faculty_role
+    access_token["is_active"] = faculty_is_active
+    access_token["verification_status"] = faculty_verif_status
 
     return {
         "access": str(access_token),
@@ -55,7 +61,8 @@ def _issue_tokens(user) -> dict:
             "username": user.username,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "role": faculty_role
+            "role": faculty_role,
+            "is_active": faculty_is_active,
         }
     }
 
@@ -73,24 +80,46 @@ class FacultyLoginView(APIView):
 
         from django.db.models import Q
         try:
+            # Allow both active AND inactive faculty to attempt login
+            # (inactive = pending admin verification)
             faculty = Faculty.objects.select_related("user").get(
                 Q(employee_id__iexact=employee_id) |
                 Q(user__username__iexact=employee_id) |
-                Q(user__email__iexact=employee_id),
-                is_active=True
+                Q(user__email__iexact=employee_id)
             )
         except Faculty.DoesNotExist:
             return Response({"detail": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
 
         user = authenticate(request, username=faculty.user.username, password=password)
         if user is None:
-            return Response({"detail": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
+            # Django's authenticate() returns None if user.is_active is False.
+            # Check the password directly so inactive, pending, or rejected accounts can receive appropriate status screens.
+            if faculty.user.check_password(password):
+                user = faculty.user
+            else:
+                return Response({"detail": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # ── Verification gate ──────────────────────────────────────────────
+        # Use the real verification_status field to distinguish:
+        #   pending  → new account, never reviewed yet
+        #   rejected → was approved before, admin later revoked access
+        #   approved → full portal access
+        verif_status = (faculty.verification_status or "pending").lower()
+
+        if not faculty.is_active or verif_status in ["pending", "rejected"]:
+            tokens = _issue_tokens(user)
+            return Response(
+                {
+                    "mfa_required": False,
+                    "verification_status": verif_status,  # "pending" or "rejected"
+                    "is_active": False,
+                    **tokens,
+                },
+                status=status.HTTP_200_OK,
+            )
+        # ──────────────────────────────────────────────────────────────────
 
         if faculty.mfa_enabled:
-            # Short-lived (5 min) intermediate token that ONLY authorizes
-            # the MFA verification step -- it must not be usable against any
-            # other endpoint. In production, encode a `scope: "mfa_pending"`
-            # claim and check it in a dedicated permission class.
             mfa_token = AccessToken.for_user(user)
             mfa_token.set_exp(lifetime=__import__("datetime").timedelta(minutes=5))
             mfa_token["scope"] = "mfa_pending"
@@ -99,7 +128,56 @@ class FacultyLoginView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        return Response({"mfa_required": False, **_issue_tokens(user)}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "mfa_required": False,
+                "verification_status": "approved",
+                "is_active": True,
+                **_issue_tokens(user),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class FacultyStatusView(APIView):
+    """
+    GET /api/v1/faculty/auth/status/
+    Returns current live verification_status and is_active flag for the authenticated faculty.
+    Used by frontend route guards to detect real-time approval or revocation.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+        token_str = ""
+        if auth_header.startswith("Bearer "):
+            token_str = auth_header.split(" ", 1)[1].strip()
+        elif auth_header:
+            token_str = auth_header.strip()
+
+        if not token_str:
+            return Response({"error": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            token = AccessToken(token_str)
+            user_id = token.get("user_id")
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            faculty = getattr(user, "faculty_profile", None)
+            if not faculty:
+                return Response({"error": "Faculty profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            verif_status = (faculty.verification_status or "pending").lower()
+            return Response({
+                "username": user.username,
+                "employee_id": faculty.employee_id,
+                "role": faculty.role,
+                "is_active": faculty.is_active,
+                "verification_status": verif_status,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class FacultyMFAVerifyView(APIView):
@@ -185,13 +263,16 @@ class FacultySignUpSerializer(serializers.Serializer):
                 password=validated_data["password"],
                 first_name=validated_data.get("first_name", ""),
                 last_name=validated_data.get("last_name", ""),
+                is_active=True,  # Django auth_user stays active so login works
             )
             faculty = Faculty.objects.create(
                 user=user,
                 employee_id=validated_data["employee_id"],
                 department=validated_data["department"],
                 role=validated_data.get("role", Faculty.Role.MODERATOR),
-                mfa_enabled=False
+                mfa_enabled=False,
+                is_active=False,              # Portal blocked until admin approves
+                verification_status="pending",  # Explicitly: new account, never reviewed
             )
         return faculty
 
@@ -205,12 +286,13 @@ class FacultySignUpView(APIView):
         serializer.is_valid(raise_exception=True)
         faculty = serializer.save()
         user = faculty.user
-        
+
         tokens = _issue_tokens(user)
         return Response(
             {
-                "message": "Registration successful.",
+                "message": "Registration successful. Your account is pending admin verification. You will be able to access the portal once approved.",
                 "mfa_required": False,
+                "verification_status": "pending",
                 **tokens
             },
             status=status.HTTP_201_CREATED,

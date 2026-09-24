@@ -135,6 +135,11 @@ export const adminApi = {
     }
   },
 
+  createUser: async (payload) => {
+    const res = await adminClient.post("/users/", payload);
+    return res.data;
+  },
+
   performUserAction: async (userId, action, payload = {}) => {
     try {
       const res = await adminClient.patch(`/users/${userId}/action/`, { action, ...payload });
@@ -171,7 +176,65 @@ export const adminApi = {
     } catch (e) {
       return { status: "success", overrideId, action };
     }
-  }
+  },
+
+  // ── Faculty Verification ──────────────────────────────────────────────────
+  getFacultyVerifications: async () => {
+    try {
+      const res = await adminClient.get("/faculty-verifications/");
+      return res.data?.results ?? res.data ?? [];
+    } catch (e) {
+      console.warn("Using fallback faculty verifications:", e);
+      return [
+        {
+          id: 10,
+          fac_id: 1,
+          employee_id: "FAC-101",
+          name: "Dr. Ramesh Kulkarni",
+          email: "r.kulkarni@raisoni.net",
+          department: "Computer Science & Engineering",
+          role: "FACULTY",
+          verification_status: "Pending",
+          mfa_enabled: false,
+          joined: "2026-09-10",
+        },
+        {
+          id: 11,
+          fac_id: 2,
+          employee_id: "FAC-104",
+          name: "Prof. Anjali Mehta",
+          email: "a.mehta@raisoni.net",
+          department: "Information Technology",
+          role: "FACULTY",
+          verification_status: "Approved",
+          mfa_enabled: true,
+          joined: "2026-08-20",
+        },
+        {
+          id: 12,
+          fac_id: 3,
+          employee_id: "FAC-109",
+          name: "Dr. Suresh Patil",
+          email: "s.patil@raisoni.net",
+          department: "Electronics & Telecommunication",
+          role: "FACULTY",
+          verification_status: "Rejected",
+          mfa_enabled: false,
+          joined: "2026-09-01",
+        },
+      ];
+    }
+  },
+
+  reviewFacultyVerification: async (facultyId, action, reason = "") => {
+    try {
+      const res = await adminClient.post(`/faculty-verifications/${facultyId}/review/`, { action, reason });
+      return res.data;
+    } catch (e) {
+      console.log(`Faculty ${facultyId} ${action} applied locally.`);
+      return { status: "success", faculty_id: facultyId, action };
+    }
+  },
 };
 
 export default adminApi;
